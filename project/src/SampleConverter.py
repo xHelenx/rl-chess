@@ -38,7 +38,7 @@ class SampleConverter:
                             chess.H2: [chess.H2, []]}}  #Pawn 8
         self.dataset = {chess.WHITE : white_pieces, chess.BLACK: black_pieces}
         self.board = None 
-        
+        self.total_games = 0
     def reset_starting_positions(self): 
         for is_white in [True, False]: 
             for piece_type in [chess.ROOK, chess.KNIGHT, chess.BISHOP, chess.KING, chess.QUEEN, chess.PAWN]: 
@@ -52,6 +52,7 @@ class SampleConverter:
                 game = game.partition("### ")[2]
                 if not "O-" in game: 
                     is_last_move = False 
+                    self.total_games += 1 
                     self.board.reset()
                     self.reset_starting_positions() 
                     #print(self.dataset)
@@ -65,19 +66,25 @@ class SampleConverter:
                         #print("MOVE:", current_move)
                         #calculate which piece moved from where to where     
                         (start, is_white, piece_type, original_start) = self.get_moving_piece(current_move) 
-                            
+                        if start == None: 
+                            print(game)
+                            break 
                         #get current move, dest and what piece is at that pos 
                         current_move = current_move.partition(".")[2]
                         dest = self.get_destination_pos(current_move)
                         piece_at_dest = self.board.piece_type_at(chess.parse_square(dest))
                         
+                        move = start+dest
+                        
                         #check if king was captured to end game 
                         if piece_at_dest != None and piece_at_dest == chess.KING: 
                             is_last_move = True 
                             
+                        state = self.board.fen() 
                         #perform move on board + update dataset
                         board_move = chess.Move.from_uci(start + dest)
                         self.board.push(board_move)
+                        next_state = self.board.fen() 
                         
                         #TODO: add other ways to end a game 
                         #if self.board.is_checkmate or self.board.is_stalemate() or self.board.is_insufficient_material(): 
@@ -85,13 +92,21 @@ class SampleConverter:
                         
                         #display(self.board)
                         self.dataset[is_white][piece_type][original_start][0] = chess.parse_square(dest)
-                        
-                        #TODO: generate samples 
-                        #self.add_sample()
+                        self.add_sample(is_white, piece_type, original_start,start+dest,state,next_state)
                            
                         if is_last_move: 
                             break  
             
+    def get_action(self,move:str) -> tuple:        
+        x_steps = ord(move[2]) - ord(move[0])
+        y_steps = ord(move[3]) - ord(move[1])
+        return (x_steps, y_steps)     
+        
+        
+    def add_sample(self, is_white, piece_type, original_start,move,state,next_state): 
+        
+        action = self.get_action(move)
+        self.dataset[is_white][piece_type][original_start][1] += [(action, state, next_state)]
     
     def is_white(self, move:str):
         return "W" in move.partition(".")[0]
@@ -200,8 +215,8 @@ class SampleConverter:
         print(chess.piece_name(piece_type))
         print(start, dest)     
         display(self.board)          
-        raise ValueError("No piece performed move")
+        return (None,None,None,None)
     
-    def add_sample(self): 
+    
         
             
