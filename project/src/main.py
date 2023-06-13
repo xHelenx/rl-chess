@@ -1,7 +1,7 @@
 
 from SampleConverter import SampleConverter
-
+from constants import PATH, FILE
 if __name__ == "__main__":
     sampleConv = SampleConverter()
-    sampleConv.read_dataset("E:/HAW/Master/Grundprojekt/project/dataset/03_sorted_100.txt")
+    sampleConv.read_dataset(PATH + FILE )
     
