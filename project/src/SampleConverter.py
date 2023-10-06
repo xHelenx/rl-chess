@@ -1,60 +1,26 @@
-import chess 
+import chess
+import chess.svg
+from AgentCollection import AgentCollection 
 
 class SampleConverter:
-    def __init__(self) -> None:
-        black_pieces = {
-            chess.ROOK:{    chess.A8: [chess.A8, []],  #Rook R
-                            chess.H8: [chess.H8, []]}, #Rook L
-            chess.KNIGHT:{  chess.B8: [chess.B8, []],  #Knight R
-                            chess.G8: [chess.G8, []]}, #Knight L 
-            chess.BISHOP:{  chess.C8: [chess.C8, []],  #Bishop L
-                            chess.F8: [chess.F8, []]}, #Bishop R
-            chess.KING:{    chess.E8: [chess.E8, []]}, #King  
-            chess.QUEEN:{   chess.D8: [chess.D8, []]}, #Queen
-            chess.PAWN:{    chess.A7: [chess.A7, []],  #Pawn 1
-                            chess.B7: [chess.B7, []],  #Pawn 2
-                            chess.C7: [chess.C7, []],  #Pawn 3
-                            chess.D7: [chess.D7, []],  #Pawn 4
-                            chess.E7: [chess.E7, []],  #Pawn 5
-                            chess.F7: [chess.F7, []],  #Pawn 6 
-                            chess.G7: [chess.G7, []],  #Pawn 7
-                            chess.H7: [chess.H7, []]}}  #Pawn 8
-        white_pieces = {
-            chess.ROOK:{    chess.A1: [chess.A1, []],  #Rook R
-                            chess.H1: [chess.H1, []]}, #Rook L
-            chess.KNIGHT:{  chess.B1: [chess.B1, []],  #Knight R
-                            chess.G1: [chess.G1, []]}, #Knight L 
-            chess.BISHOP:{  chess.C1: [chess.C1, []],  #Bishop L
-                            chess.F1: [chess.F1, []]}, #Bishop R
-            chess.KING:{    chess.E1: [chess.E1, []]}, #King  
-            chess.QUEEN:{   chess.D1: [chess.D1, []]},  #Queen
-            chess.PAWN:{    chess.A2: [chess.A2, []],  #Pawn 1
-                            chess.B2: [chess.B2, []],  #Pawn 2
-                            chess.C2: [chess.C2, []],  #Pawn 3
-                            chess.D2: [chess.D2, []],  #Pawn 4
-                            chess.E2: [chess.E2, []],  #Pawn 5
-                            chess.F2: [chess.F7, []],  #Pawn 6 
-                            chess.G2: [chess.G2, []],  #Pawn 7
-                            chess.H2: [chess.H2, []]}}  #Pawn 8
-        self.dataset = {chess.WHITE : white_pieces, chess.BLACK: black_pieces}
+    def __init__(self, agentCollection:AgentCollection) -> None:
+        self.agentCollection = agentCollection
         self.board = None 
         self.total_games = 0
-    def reset_starting_positions(self): 
-        for is_white in [True, False]: 
-            for piece_type in [chess.ROOK, chess.KNIGHT, chess.BISHOP, chess.KING, chess.QUEEN, chess.PAWN]: 
-                for original_startpos in self.dataset[is_white][piece_type]: 
-                    self.dataset[is_white][piece_type][original_startpos][0] = original_startpos
+        self.current_game = 0
+    
         
     def read_dataset(self, file, visualize=False): 
         with open(file, "rt") as myfile: 
             for game in myfile:  
+                self.current_game += 1 
                 self.board = chess.Board()
                 game = game.partition("### ")[2]
                 if not "O-" in game: 
                     is_last_move = False 
                     self.total_games += 1 
                     self.board.reset()
-                    self.reset_starting_positions() 
+                    self.agentCollection.reset_agents_position()
                     #print(self.dataset)
                     #print("-------------")
                     #print("NEXT GAME: ")
@@ -62,13 +28,12 @@ class SampleConverter:
                     game = game.split(" ")
                     game = [item for item in game if "." in item]
                     #print(game)
-                    for current_move in game:    
+                    for current_move in game:  
                         #print("MOVE:", current_move)
                         #calculate which piece moved from where to where     
-                        (start, is_white, piece_type, original_start) = self.get_moving_piece(current_move) 
-                        if start == None: 
-                            print(game)
-                            break 
+                        agent = self.get_moving_piece(current_move) 
+                        start = chess.square_name(agent.current_position)
+                        
                         #get current move, dest and what piece is at that pos 
                         current_move = current_move.partition(".")[2]
                         dest = self.get_destination_pos(current_move)
@@ -82,17 +47,20 @@ class SampleConverter:
                             
                         state = self.board.fen() 
                         #perform move on board + update dataset
-                        board_move = chess.Move.from_uci(start + dest)
+                        
+                        self.agentCollection.update_agents_pos((chess.parse_square(start), chess.parse_square(dest))) 
+                        board_move = chess.Move.from_uci(move)
                         self.board.push(board_move)
+                        
                         next_state = self.board.fen() 
+                            
                         
                         #TODO: add other ways to end a game 
                         #if self.board.is_checkmate or self.board.is_stalemate() or self.board.is_insufficient_material(): 
                         #    is_last_move = True 
                         
-                        #display(self.board)
-                        self.dataset[is_white][piece_type][original_start][0] = chess.parse_square(dest)
-                        self.add_sample(is_white, piece_type, original_start,start+dest,state,next_state)
+                        #TODO translate state 
+                        agent.dataset += [[state, (chess.parse_square(start), chess.parse_square(dest)), next_state]]
                            
                         if is_last_move: 
                             break  
@@ -103,11 +71,6 @@ class SampleConverter:
         return (x_steps, y_steps)     
         
         
-    def add_sample(self, is_white, piece_type, original_start,move,state,next_state): 
-        
-        action = self.get_action(move)
-        self.dataset[is_white][piece_type][original_start][1] += [(action, state, next_state)]
-    
     def is_white(self, move:str):
         return "W" in move.partition(".")[0]
     
@@ -163,7 +126,7 @@ class SampleConverter:
     
     def is_ambiguous_piece(self, move:str):
         '''
-        checks if the position could be reacehd my multiple pieces of the same piece type 
+        checks if the position could be reached my multiple pieces of the same piece type 
         '''
         #bs vor x e.g. (Bgxe2)/ Bge2
         if len(move) >= 4 and move[0].isupper() and move[1].islower() and  move[1] != "x" and \
@@ -181,42 +144,32 @@ class SampleConverter:
             return (False, None)
         
     def get_moving_piece(self, move:str) -> tuple: 
+
         is_white = self.is_white(move)
         move = move.partition(".")[2]
         piece_type = self.get_piece_type(move[0])
         dest = ""
-
-        #for piece in self.dataset[is_white]: 
-        for original_startpos in self.dataset[is_white][piece_type]:
-            start = chess.square_name(self.dataset[is_white][piece_type][original_startpos][0])
-            dest = self.get_destination_pos(move)  
-            (is_ambigious, x_val) = self.is_ambiguous_piece(move)
-            #print(is_ambigious,x_val)
-            #print("Kombo:", start, dest )
-            if start != dest: 
+        
+        for agent in self.agentCollection.getAgentsAlive(is_white): 
+            start = chess.square_name(agent.current_position)
+            dest = self.get_destination_pos(move)
+            (is_ambiguous, x_val) = self.is_ambiguous_piece(move)
+             
+            if start != dest and is_white == agent.color and piece_type == agent.piece_type: 
                 possible_move = start + dest
                 legal_moves = list(self.board.pseudo_legal_moves) # Move.from_uci('g1h3')
-                #print(chess.Move.from_uci(possible_move))
-                #print(legal_moves)
-                #print(chess.piece_name(piece_type))
-                #print(start, dest)
-                
-                if is_ambigious:  
-                    
+                if is_ambiguous:  
                     if possible_move[0] == x_val and chess.Move.from_uci(possible_move) in legal_moves: 
-                        return (start,is_white, piece_type,original_startpos) 
+                        return agent 
                     
                 elif chess.Move.from_uci(possible_move) in legal_moves:
-                    return (start,is_white, piece_type,original_startpos)
-             
-        print(is_white, move)
-        print(chess.Move.from_uci(possible_move))
-        print(legal_moves)
-        print(chess.piece_name(piece_type))
-        print(start, dest)     
-        display(self.board)          
+                    return agent 
+        boardsvg = chess.svg.board(board=self.board, fill={chess.parse_square(start):"#d4d669", chess.parse_square(dest):"#69d695"})
+        outputfile = open('image.svg', "w")
+        outputfile.write(boardsvg)
+        outputfile.close()                 
         return (None,None,None,None)
-    
-    
+
+       
         
             

@@ -1,8 +1,10 @@
+import chess
 import matplotlib.pyplot as plt
 import numpy as np
 from SampleConverter import SampleConverter
 
-def plot_frequency_distribution(dataset, colors:list, piece, starting_positions:list): 
+def plot_frequency_distribution(agents:list):
+#(dataset, colors:list, piece, starting_positions:list): 
     '''
     colors = [WHITE] oder [WHITE,BLACK]
     '''
@@ -13,15 +15,17 @@ def plot_frequency_distribution(dataset, colors:list, piece, starting_positions:
 
     x = []
     y = []
-
-    for is_white in colors:
-        for i in starting_positions:
-            if i in dataset[is_white][piece]:
-                for j in range(0,len(dataset[is_white][piece][i][1])):
-                    x+= [dataset[is_white][piece][i][1][j][0][0]]
-                    y+= [dataset[is_white][piece][i][1][j][0][1]]   
-    hist, xedges, yedges = np.histogram2d(x, y, bins=14, range=[[-7, 7], [-7, 7]])
-
+    
+    for agent in agents: 
+        print(agent.trainAPF[0])
+        for [_,(start,dest),_] in agent.trainAPF: 
+            (start,dest) = absolute_to_relative_movement(start,dest)
+            x += [start]
+            y += [dest]
+           
+    
+    hist, xedges, yedges = np.histogram2d(x, y, bins=15, range=[[-7, 7], [-7, 7]])
+    print(hist)
     # Construct arrays for the anchor positions 
     xpos, ypos = np.meshgrid(xedges[:-1], yedges[:-1], indexing="ij")
     xpos = xpos.ravel()
@@ -42,3 +46,15 @@ def plot_frequency_distribution(dataset, colors:list, piece, starting_positions:
     ax.set_ylabel("Relative movement y-axis")
     ax.set_zlabel("Frequence")
     plt.show()
+    
+def absolute_to_relative_movement(start,dest): 
+    ''' integer to relative '''
+    start = chess.square_name(start)
+    dest = chess.square_name(dest)
+    
+    x = ord(dest[0]) - ord(start[0])
+    y = ord(dest[1]) - ord(start[1])
+    
+    
+    return (x,y)
+  
