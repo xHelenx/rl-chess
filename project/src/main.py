@@ -3,26 +3,24 @@ import random
 
 import chess
 import matplotlib.pyplot as plt
-import numpy as np
-import tensorflow as tf
 from Agent import Agent
 from AgentCollection import AgentCollection
 from ChessEnvironment import ChessEnvironment
 from constants import *
 from Experiment import Experiment
-from ObservationSpacePositionPerPiece import ObservationSpacePositionPerPiece
-from plotting import absolute_to_relative_movement, plot_frequency_distribution
+from plotting import plot_errors, plot_errors_scatter, plot_histograms, plot_metrics, transform_dataset
 from SampleConverter import SampleConverter
 from tqdm import tqdm
+from stockfish import Stockfish #add to python env variables
 
 import matplotlib.pyplot as plt
+
 def linear_eps_decay(i, num_eps, start=1, stop=0): 
     '''
         Linearily decline epsilon from start to stop
     '''
     return start - (i-1) * ((start - stop) / num_eps)
-
-
+    
 def train_coop(): 
     #TODO rewards for both teams individually? 
     
@@ -60,157 +58,27 @@ def batch_generator(X, y, batch_size):
             batch_X = X[batch_indices]
             batch_y = y[batch_indices]
             yield batch_X, batch_y
-   '''                 
-def transform_dataset(agent:Agent, dataset:list):
-    obsModeller = ObservationSpacePositionPerPiece()
-    y = []
-    X = []
-    for [state, action, _ ] in dataset:
-            #PREPARING DATASET FOR BATCH TRAINING
-            board = chess.Board(state) #fen converts board into game state 
-            #get legal move as relative vector        
-            valid_actions = []
-            probabilities = []
-            
-            for move in board.legal_moves: 
-                #identify all moves that the current agent could do by look at the current position of the agent 
-                rel_move = absolute_to_relative_movement(move.from_square, move.to_square)
-                if move.from_square == action[0] and rel_move in agent.action_space : 
-                    valid_actions += [rel_move]
-                    probabilities += agent.hist[7+rel_move[0],7+rel_move[1]]
-            if valid_actions != []: 
-
-                #obtain target value using APF
-                random_value = random.randint(0,sum(probabilities))
-                summed_probs  = 0
-                i = 0 
-                for i in range(len(probabilities)):
-                    summed_probs += probabilities[i]
-                    if summed_probs > random_value:
-                        break 
-            
-                action = valid_actions[i] 
-                y += [agent.action_space.index(action)]
-                X += [(obsModeller.get_observation_space(board))]
-    return (np.array(X),np.array(y))
-
-    
-def plot_metrics(history):
-    # Plot training & validation loss values
-    fig = plt.figure(figsize=(12,4))  # Adjust the figure size as needed
-    plt.subplot(1, 2, 1)  # Create the first subplot
-
-    plt.plot(history['loss'])
-    plt.plot(history['val_loss'])
-    plt.title('Model Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend(['Train', 'Validation'], loc='upper right')
-    #for step in range(0,EPISODES_CNN*ROUNDS, BATCH_SIZE):  # Starting from 5, up to 20, with a step of 5
-    ##    plt.axvline(x=step, color='gray', linestyle='--', alpha=0.5)
-
-
-    # Plot training & validation accuracy values
-    plt.subplot(1, 2, 2)  # Create the second subplot
-    plt.plot(history['accuracy'])
-    plt.plot(history['val_accuracy'])
-    plt.title('Model Accuracy')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.legend(['Train', 'Validation'], loc='lower right')
-    
-    #for step in range(0,EPISODES_CNN*ROUNDS, BATCH_SIZE):  # Starting from 5, up to 20, with a step of 5
-    ##    plt.axvline(x=step, color='gray', linestyle='--', alpha=0.5)
-
-    plt.show()
-    
-def plot_histograms(agent:Agent): 
-    ## PLOT OLD 
-    
-    fig = plt.figure()
-    fig.set_size_inches(12,12)
-    ax = fig.add_subplot(1,2,1, projection='3d')
-    
-    x = []
-    y = []
-    for [_,(start,dest),_] in agent.trainAPF: 
-        (start,dest) = absolute_to_relative_movement(start,dest)
-        x += [start]
-        y += [dest]
-        
-    
-    hist, xedges, yedges = np.histogram2d(x, y, bins=15, range=[[-7, 7], [-7, 7]])
-    # Construct arrays for the anchor positions 
-    xpos, ypos = np.meshgrid(xedges[:-1], yedges[:-1], indexing="ij")
-    xpos = xpos.ravel()
-    ypos = ypos.ravel()
-    zpos = 0
-
-    # Construct arrays with the dimensions for the 16 bars.
-    dx = dy = 0.7 * np.ones_like(zpos) #Breite der Säulen 
-    dz = hist.ravel()
-
-    #ax.elev = 45 #height camera  
-    #ax.azim = 90 #rotation y axis
-    ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average')
-
-    #print(sum(sum(hist)))
-    #ax.set_title(chess.piece_name(PIECE))
-    ax.set_xlabel("Relative movement x-axis")
-    ax.set_ylabel("Relative movement y-axis")
-    ax.set_zlabel("Frequence")
-  
-    
-    #####PLOT NEW 
-    (X_test, _) = transform_dataset(agent,agent.test)
-    predictions = agent.cnn.predict(X_test)
-    predictions = tf.argmax(predictions, axis=-1)
-    x_move = []
-    y_move = []
-
-    ax = fig.add_subplot(1,2,2, projection='3d')
-    for pred in predictions.numpy(): 
-        x_move += [agent.action_space[pred][0]]
-        y_move += [agent.action_space[pred][1]]
-    hist, xedges, yedges = np.histogram2d(x_move, y_move, bins=15, range=[[-7, 7], [-7, 7]])
-    xpos, ypos = np.meshgrid(xedges[:-1], yedges[:-1], indexing="ij")
-    xpos = xpos.ravel()
-    ypos = ypos.ravel()
-    zpos = 0
-
-    # Construct arrays with the dimensions for the 16 bars.
-    dx = dy = 0.7 * np.ones_like(zpos) #Breite der Säulen 
-    dz = hist.ravel() #ax.elev = 45 #height camera  
-    #ax.azim = 90 #rotation y axis
-    ax.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average')
-
-    #print(sum(sum(hist)))
-    #ax.set_title(chess.piece_name(PIECE))
-    ax.set_xlabel("Relative movement x-axis")
-    ax.set_ylabel("Relative movement y-axis")
-    ax.set_zlabel("Frequence")
-    
-    plt.show()
-
+   ''' 
    
 
-def train_net(agent:Agent): 
+
+def train_net(agent:Agent, episodes_cnn): 
     # Initialize an empty dictionary to store aggregated history data
     aggregated_history = {
     'loss': [],
     'val_loss': [],
     'accuracy': [],
     'val_accuracy': [] }
-
-    for _ in range(ROUNDS): 
-        (X_train, y_train) = transform_dataset(agent,agent.trainNet)
-        (X_test, y_test) = transform_dataset(agent,agent.test)
-        #print(agent.cnn.predict(tf.expand_dims(obsModeller.get_observation_space(board),axis=0)))
-        history = agent.cnn.fit(X_train,y_train, epochs=EPISODES_CNN, validation_data=(X_test, y_test))
-        aggregated_history['loss'].extend(history.history['loss'])
-        aggregated_history['val_loss'].extend(history.history['val_loss'])
-        aggregated_history['accuracy'].extend(history.history['accuracy'])
-        aggregated_history['val_accuracy'].extend(history.history['val_accuracy'])
+  
+    (X_train, y_train,_,_) = transform_dataset(agent,agent.trainNet)
+    (X_test, y_test,_,_) = transform_dataset(agent,agent.test)
+    #print(agent.cnn.predict(tf.expand_dims(obsModeller.get_observation_space(board),axis=0)))
+    history = agent.cnn.fit(X_train,y_train, epochs=episodes_cnn, validation_data=(X_test, y_test), verbose=0)
+    aggregated_history['loss'].extend(history.history['loss'])
+    aggregated_history['val_loss'].extend(history.history['val_loss'])
+    aggregated_history['accuracy'].extend(history.history['accuracy'])
+    aggregated_history['val_accuracy'].extend(history.history['val_accuracy'])
+    
     return aggregated_history
 
 
@@ -231,7 +99,7 @@ def train_net(agent:Agent):
     #    test_loss, test_accuracy = agent.cnn.evaluate(X_test, y_test)
     #    #print(agent.cnn.predict(tf.expand_dims(obsModeller.get_observation_space(board),axis=0)))
     #    agent.cnn.fit(np.array(X_train),np.array(y_train), epochs=EPISODES_CNN)
-        
+  
 
 if __name__ == "__main__":
     
@@ -275,6 +143,7 @@ if __name__ == "__main__":
     print("--> Starting to read dataset <-- ")
     sampleConv.read_dataset(PATH + FILE )    
     print("--> Read and learned from APF " + str(sampleConv.total_games) + " games <-- ")
+
     
     experiment = Experiment( episodes=EPISODES_COOP,hidden_size=HIDDEN_SIZE, max_steps=MAX_STEPS)
     print("--> Setting up ChessEnvironment <-- ")
@@ -294,12 +163,28 @@ if __name__ == "__main__":
     
     print("--> Starting to transfer APF to CNN model <-- ")
     
-    history = train_net(agentCollection.getAgentAtStartingPosition(chess.H8))
-    plot_metrics(history)
-    plot_histograms(agentCollection.getAgentAtStartingPosition(chess.H8))   
+    stockfish=Stockfish("stockfish-windows-x86-64-modern")
+    stockfish.set_depth(10)
+    stockfish.set_skill_level(5)
+    white_agents = agentCollection.getAgentsByColor(True)
+    ####TODO: atm only train white team
+    for i in range(0,ROUNDS):
+        for agent in white_agents: 
+            print(agent.starting_position)
+            train_net(agent, EPISODES_CNN)
+        #env.play_coop(i)
+        env.play_against_bot(i, stockfish)
+        print("Round ", str(i), " completed")
     
+    #plot_metrics(history)
+    #plot_histograms(agentCollection.getAgentAtStartingPosition(chess.H8))   
     #print("--> Starting cooperative learning phase <-- ")
     #train_coop() 
     print("--> Training completed <-- ")
+    plot_errors(white_agents)
+    plot_errors_scatter(white_agents)
+    print("--> Play Botgame <-- ")
+   
+    
     
         

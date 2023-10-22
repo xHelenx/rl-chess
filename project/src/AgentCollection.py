@@ -6,6 +6,9 @@ class AgentCollection:
         
     def addAgent(self, agent:Agent): 
         self.allAgents += [agent]
+        
+    def removeAgent(self, agent:Agent): 
+        self.allAgents -= [agent]
     
     def getAgentsByColor(self, color:bool): 
         filteredAgents = []
@@ -20,6 +23,16 @@ class AgentCollection:
             if agent.color == color and agent.alive: 
                 filteredAgents += [agent]
         return filteredAgents  
+    
+    def getMovableAgents(self,board): 
+        current_pos = [x.from_square for x in board.legal_moves] #get all starting pos
+        #print(current_pos)
+        result = list(dict.fromkeys(current_pos))
+        #print(result)
+        agents = []
+        for pos in result: 
+            agents += [self.getAgentAtPosition(pos)]
+        return agents 
     
     def getAgentAtPosition(self, current_position:chess.Square): 
         for agent in self.allAgents: 
@@ -44,18 +57,26 @@ class AgentCollection:
             if agent.color == color and agent.piece_type == chess.KING: 
                 return agent 
             
-    def update_agents_pos(self, action): 
+    def update_agents_pos(self, action, is_white=True, board:chess.Board=None): 
         '''
         updates position in agent data structure
+        action = (abs_int, abs_int)
         ''' 
         #check if other agent has been captured in destination and note that 
         agent= self.getAgentAtPosition(action[1])
         if agent != None:
             agent.current_position = -1 
             agent.alive = False       
-            
         #update position of piece, that is moved 
         agent = self.getAgentAtPosition(action[0])
+        if agent == None: 
+            print("action: ", action,  "options ", board.legal_moves )                         
+            boardsvg = chess.svg.board(board=board)
+            outputfile = open('image.svg', "w")
+            outputfile.write(boardsvg)
+            outputfile.close()
+            print(is_white)
+            print(action)
         agent.current_position = action[1]     
         
     def reset_agents_position(self): 

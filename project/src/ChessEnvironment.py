@@ -1,11 +1,10 @@
 import random
 
 import chess
-import sys
 import chess.svg
+import tensorflow as tf
 import constants
 import numpy as np
-from Agent import Agent
 from AgentCollection import AgentCollection
 from CNN import CNN 
 from DQN import DQN
@@ -13,15 +12,15 @@ from Experiment import Experiment
 from ObservationSpaceModeller import ObservationSpaceModeller
 from ObservationSpacePositionPerPiece import ObservationSpacePositionPerPiece
 import time
-from plotting import absolute_to_relative_movement
+from stockfish import Stockfish 
+from plotting import absolute_to_relative_movement, relative_to_absolute_movement
+from Agent import Agent
 
 NO_ACTION = (0,0)
 
 class ChessEnvironment: 
     def __init__(self, agents:AgentCollection, min_appear:float, experiment_conf:Experiment) -> None:
-        ''' 
-        
-        '''
+
         self.agentCollection = agents
         self.board = chess.Board()    
         self.min_appear = min_appear
@@ -39,7 +38,7 @@ class ChessEnvironment:
             q_net_target.model.set_weights(q_net.model.get_weights())
             agent.q_net_target = q_net_target
             agent.cnn = CNN(constants.HIDDEN_SIZE, len(agent.action_space)).model        
-       
+            
     def __get_action_space(self, agent):
         x = []
         y = []
@@ -85,19 +84,152 @@ class ChessEnvironment:
         
         #reset game     
         self.board.reset()
+        #self.board.set_board_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1")
+        
         #reset number of steps, used to determine whos turn it is
         self.current_step = 0
       
-    def _get_possible_actions_for_agent(self, moves:list, position:int): 
+    
+    def _get_possible_actions_for_agent(self, moves:list, current_position:int): 
         '''        
         returns list possible actions at current positions, 
             action = [(from_square, to_square)...] #(int,int)
         '''
         actions = []
         for move in moves: 
-            if position == move.from_square:  
+            if current_position == move.from_square:  
                 actions += [(move.from_square, move.to_square)]
         return actions 
+    
+    def play_against_bot(self, attempt:int, opponent:Stockfish): 
+        self.reset() 
+        
+        done = False 
+        
+        while not done: 
+            action = []
+            self.current_step += 1  
+            is_white = self.current_step % 2 == 1  #white turn  
+            action_preselection = []   
+            if is_white: #ki plays
+                #get all possible agents (alive)
+                #alive_agents = self.agentCollection.getAgentsAlive(is_white)
+                moveable_agents = self.agentCollection.getMovableAgents(self.board)
+                #if moveable_agents == [] or len(moveable_agents) == 1:
+                #    self.agentCollection.getMovableAgents(self.board)
+                
+                for agent in moveable_agents: 
+                
+                    #each agent suggests an action with cnn (if it is valid, it is an option for global action, if not agent looses option to play)
+                    state = tf.expand_dims(self.observation_space_modeller.get_observation_space(self.board),axis=0)
+                    action_dist = agent.cnn.predict(state)
+                    action = agent.action_space[tf.argmax(action_dist, axis=-1).numpy()[0]]
+                    #analyse if action is possible to play
+                    
+                    #transform to abs 
+                    action = relative_to_absolute_movement(action[0], action[1], agent.current_position)
+                    #TODO action return relativ absolut mixed
+                    if action in self._get_possible_actions_for_agent(self.board.legal_moves, agent.current_position):
+                        action_preselection += [action]
+                        agent.validSuggestions[attempt] += 1
+                    else: 
+                        agent.invalidSuggestions[attempt] += 1                
+                #print("len move able agents: ", len(moveable_agents), "action pre:", str(action_preselection), "total options:", len(list(self.board.legal_moves)), "options ", self.board.legal_moves )                         
+                #at least one piece has to be moveable
+                if len(action_preselection) > 0: 
+                    action = random.choice(action_preselection)
+                    action = chess.square_name(action[0])+chess.square_name(action[1])
+                else:
+                    #print(str(is_white), "didnt suggest a valid move") 
+                    #print(self.board.is_checkmate(), self.board.is_stalemate())
+                    done = True  
+            else: #bot plays 
+                opponent.set_fen_position(self.board.fen())
+                moves = opponent.get_top_moves(3)
+                
+                castling_moves = list(self.board.generate_castling_moves())
+                if castling_moves != []:
+                    for castling_move in castling_moves: 
+                        castling_move = chess.square_name(castling_move.from_square) + chess.square_name(castling_move.to_square)
+                        for move in moves:
+                            if move["Move"] == castling_move: 
+                                moves.remove(move)
+                                break
+                if moves == []: 
+                    done = True 
+                else:    
+                    action = moves[random.randint(0,len(moves)-1)] #Move as string 
+                    action = action["Move"] #tranform to number                
+                
+            if not done: 
+                #perform move on board + update dataset
+                self.agentCollection.update_agents_pos((chess.parse_square(action[0:2]), chess.parse_square(action[2:4])), is_white, self.board) #as abs number
+                board_move = chess.Move.from_uci(action) #as string
+                self.board.push(board_move)
+                
+                #print("White: ", str(is_white), " | Played: ", str(action))
+                #print("action: ", action,  "total options:", len(list(self.board.legal_moves)), "options ", self.board.legal_moves )                         
+                #boardsvg = chess.svg.board(board=self.board)
+                #outputfile = open('image' + str(attempt) + '.svg', "w")
+                #outputfile.write(boardsvg)
+                #outputfile.close() 
+                
+                if self.is_king_dead(not is_white):
+                    print(str(is_white), " won")
+                    done = True 
+            else:
+                print(is_white, len(moveable_agents), "pre_select:", len(action_preselection), "total options:", len(list(self.board.legal_moves)), "total steps: ", self.current_step, 
+                      "checkmate: ", self.board.is_checkmate(), "is_game_over" , self.board.is_game_over())                         
+                        
+                    
+                    
+    def play_coop(self, attempt:int): 
+        
+        self.reset()
+        done = False 
+        while not done: 
+            self.current_step += 1  
+            is_white = self.current_step % 2 == 1  #white turn     
+        
+            #get all possible agents (alive)
+            alive_agents = self.agentCollection.getAgentsAlive(is_white)
+            action_preselection = []
+            for agent in alive_agents: 
+            
+                #each agent suggests an action with cnn (if it is valid, it is an option for global action, if not agent looses option to play)
+                state = tf.expand_dims(self.observation_space_modeller.get_observation_space(self.board),axis=0)
+                action_index = agent.cnn.predict(state)
+                action = agent.action_space[tf.argmax(action_index, axis=-1).numpy()[0]]
+                #analyse if action is possible to play
+                
+                #transform to abs 
+                action = relative_to_absolute_movement(action[0], action[1], agent.current_position)
+                #TODO action return relativ absolut mixed
+                if action in self._get_possible_actions_for_agent(self.board.legal_moves, agent.current_position):
+                    action_preselection += [action]
+                    agent.validSuggestions[attempt] += 1
+                else: 
+                    agent.invalidSuggestions[attempt] += 1                     
+                                    
+            #at least one piece has to be moveable
+            if len(action_preselection) > 0: 
+                #select a global action    
+
+                action = random.choice(action_preselection)
+                print("White: ", str(is_white), " | Played: ", str(action))
+                
+                #perform move on board + update dataset
+                self.agentCollection.update_agents_pos(action) 
+                board_move = chess.Move.from_uci(chess.square_name(action[0])+chess.square_name(action[1]))
+                self.board.push(board_move)
+            else: 
+                print(str(is_white), "didnt suggest a valid move")
+                done = True #none of the alive pieces is able to move -> lost game 
+                
+            if self.is_king_dead(not is_white):
+                print(str(is_white), " won")
+                done = True      
+            
     
     def step(self, epsilon) -> tuple: 
         done = False 

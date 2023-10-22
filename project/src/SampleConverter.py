@@ -32,38 +32,43 @@ class SampleConverter:
                         #print("MOVE:", current_move)
                         #calculate which piece moved from where to where     
                         agent = self.get_moving_piece(current_move) 
-                        start = chess.square_name(agent.current_position)
                         
-                        #get current move, dest and what piece is at that pos 
-                        current_move = current_move.partition(".")[2]
-                        dest = self.get_destination_pos(current_move)
-                        piece_at_dest = self.board.piece_type_at(chess.parse_square(dest))
-                        
-                        move = start+dest
-                        
-                        #check if king was captured to end game 
-                        if piece_at_dest != None and piece_at_dest == chess.KING: 
-                            is_last_move = True 
+                        if agent == (None, None, None, None): 
+                            print(self.current_game)
+                            break
+                        else: 
+                            start = chess.square_name(agent.current_position)
                             
-                        state = self.board.fen() 
-                        #perform move on board + update dataset
-                        
-                        self.agentCollection.update_agents_pos((chess.parse_square(start), chess.parse_square(dest))) 
-                        board_move = chess.Move.from_uci(move)
-                        self.board.push(board_move)
-                        
-                        next_state = self.board.fen() 
+                            #get current move, dest and what piece is at that pos 
+                            current_move = current_move.partition(".")[2]
+                            dest = self.get_destination_pos(current_move)
+                            piece_at_dest = self.board.piece_type_at(chess.parse_square(dest))
                             
-                        
-                        #TODO: add other ways to end a game 
-                        #if self.board.is_checkmate or self.board.is_stalemate() or self.board.is_insufficient_material(): 
-                        #    is_last_move = True 
-                        
-                        #TODO translate state 
-                        agent.dataset += [[state, (chess.parse_square(start), chess.parse_square(dest)), next_state]]
+                            move = start+dest
+                            
+                            #check if king was captured to end game 
+                            if piece_at_dest != None and piece_at_dest == chess.KING: 
+                                is_last_move = True 
+                                
+                            state = self.board.fen() 
+                            #perform move on board + update dataset
+                            
+                            self.agentCollection.update_agents_pos((chess.parse_square(start), chess.parse_square(dest))) 
+                            board_move = chess.Move.from_uci(move)
+                            self.board.push(board_move)
+                            
+                            next_state = self.board.fen() 
+                                
+                            
+                            #TODO: add other ways to end a game 
+                            #if self.board.is_checkmate or self.board.is_stalemate() or self.board.is_insufficient_material(): 
+                            #    is_last_move = True 
+                            
+                            agent.dataset += [[state, (chess.parse_square(start), chess.parse_square(dest)), next_state]]
                            
-                        if is_last_move: 
-                            break  
+                            if is_last_move: 
+                                break  
+                        
             
     def get_action(self,move:str) -> tuple:        
         x_steps = ord(move[2]) - ord(move[0])
@@ -157,17 +162,17 @@ class SampleConverter:
              
             if start != dest and is_white == agent.color and piece_type == agent.piece_type: 
                 possible_move = start + dest
-                legal_moves = list(self.board.pseudo_legal_moves) # Move.from_uci('g1h3')
+                legal_moves = list(self.board.legal_moves) # Move.from_uci('g1h3')
                 if is_ambiguous:  
                     if possible_move[0] == x_val and chess.Move.from_uci(possible_move) in legal_moves: 
                         return agent 
                     
-                elif chess.Move.from_uci(possible_move) in legal_moves:
+                elif len(possible_move) == 4 and chess.Move.from_uci(possible_move) in legal_moves:
                     return agent 
-        boardsvg = chess.svg.board(board=self.board, fill={chess.parse_square(start):"#d4d669", chess.parse_square(dest):"#69d695"})
-        outputfile = open('image.svg', "w")
-        outputfile.write(boardsvg)
-        outputfile.close()                 
+        #boardsvg = chess.svg.board(board=self.board, fill={chess.parse_square(start):"#d4d669", chess.parse_square(dest):"#69d695"})
+        #outputfile = open('image.svg', "w")
+        #outputfile.write(boardsvg)
+        #outputfile.close()                 
         return (None,None,None,None)
 
        
