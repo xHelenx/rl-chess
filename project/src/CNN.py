@@ -1,14 +1,23 @@
 import math
+
 import tensorflow as tf
+from tensorflow.keras.layers import Conv2D, Dense, Flatten, MaxPooling2D
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+
 
 class CNN: 
+    """Convolutional Neuronal Network
+    """
 
-    def __init__(self, hidden_size, output_size:int) -> None:
+    def __init__(self, hidden_size:int, output_size:int) -> None:
+        """Creates a Convolutional Neuronal Network
+
+        Args:
+            hidden_size (int): Amount of neurons in hidden layer
+            output_size (int): Amount of outputs
+        """
         # Create a Sequential model
         self.model = Sequential()
-
     
         # Add convolutional layers
         self.model = Sequential() 
@@ -26,5 +35,5 @@ class CNN:
         #self.model.summary()  
 
 
-def loss_proximity(y_target, y_pred):
-    return math.exp((y_target[0] - y_pred[0]) + (y_target[1] - y_pred[1]),2)
+#def loss_proximity(y_target, y_pred):
+#    return math.exp((y_target[0] - y_pred[0]) + (y_target[1] - y_pred[1]),2)

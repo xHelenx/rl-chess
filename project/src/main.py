@@ -10,59 +10,50 @@ from constants import *
 from Experiment import Experiment
 from plotting import plot_errors, plot_errors_scatter, plot_histograms, plot_metrics, transform_dataset
 from SampleConverter import SampleConverter
-from tqdm import tqdm
 from stockfish import Stockfish #add to python env variables
 
 import matplotlib.pyplot as plt
 
-def linear_eps_decay(i, num_eps, start=1, stop=0): 
-    '''
-        Linearily decline epsilon from start to stop
-    '''
-    return start - (i-1) * ((start - stop) / num_eps)
+#def linear_eps_decay(i, num_eps, start=1, stop=0): 
+#    '''
+#        Linearily decline epsilon from start to stop
+#    '''
+#    return start - (i-1) * ((start - stop) / num_eps)
     
-def train_coop(): 
-    #TODO rewards for both teams individually? 
-    
-    total_steps = []
-    total_rewards = []
-    for ep in tqdm(range(1, experiment.episodes)):
-        env.reset()
-        done = False 
-        while not done: 
-            #update epsilon
-            #one epsilon value for all agents and all have same random value? Or different? no 
-            epsilon = linear_eps_decay(ep, experiment.episodes, EPSILON_START,EPSILON_STOP)
-            #let agents perform a step and get update 
-            (_, reward, done, _) = env.step(epsilon) 
-            if done:
-                total_rewards += [reward]
-                total_steps += [env.current_step]           
-                #TODO: update networks, local and (wenn implementiert) global 
-                
-    plt.plot(total_rewards)
-    plt.plot(total_steps)
-    plt.show()
-
-'''
-def batch_generator(X, y, batch_size):
-    X = np.array(X)
-    y = np.array(y)
-    num_samples = len(X)
-    
-    while True:
-        indices = np.arange(num_samples)
-        np.random.shuffle(indices)
-        for i in range(0, num_samples, batch_size):
-            batch_indices = indices[i:i+batch_size]
-            batch_X = X[batch_indices]
-            batch_y = y[batch_indices]
-            yield batch_X, batch_y
-   ''' 
-   
+#def train_coop(): 
+#    #TODO rewards for both teams individually? 
+#    
+#    total_steps = []
+#    total_rewards = []
+#    for ep in tqdm(range(1, experiment.episodes)):
+#        env.reset()
+#        done = False 
+#        while not done: 
+#            #update epsilon
+#            #one epsilon value for all agents and all have same random value? Or different? no 
+#            epsilon = linear_eps_decay(ep, experiment.episodes, EPSILON_START,EPSILON_STOP)
+#            #let agents perform a step and get update 
+#            (_, reward, done, _) = env.step(epsilon) 
+#            if done:
+#               total_rewards += [reward]
+#               total_steps += [env.current_step]           
+#               #TODO: update networks, local and (wenn implementiert) global 
+#                
+#    plt.plot(total_rewards)
+#    plt.plot(total_steps)
+#    plt.show()
 
 
-def train_net(agent:Agent, episodes_cnn): 
+def train_net(agent:Agent, episodes_cnn:int): 
+    """Trains the network for the specific agent
+
+    Args:
+        agent (Agent): Agent to be trained
+        episodes_cnn (int): Amount of episodes to be trained
+
+    Returns:
+        History: Returns aggregated history of training process including loss, val_loss, accuracy and val_accuracy
+    """
     # Initialize an empty dictionary to store aggregated history data
     aggregated_history = {
     'loss': [],
@@ -80,19 +71,6 @@ def train_net(agent:Agent, episodes_cnn):
     aggregated_history['val_accuracy'].extend(history.history['val_accuracy'])
     
     return aggregated_history
-
-
-        #add X and targets value to list 
-        #X_train += [obsModeller.get_observation_space(board)]
-        #y_targets += [target]
-    
-    
-    #train_data_generator = batch_generator(X_train,y_targets, BATCH_SIZE)
-    # Use fit_generator to train the model
-    #agent.cnn.fit_generator(generator=train_data_generator,
-    #                    steps_per_epoch=len(X_train) // BATCH_SIZE,
-    #                    epochs=EPISODES_CNN)
-    
 
     #def evaluate_net(agent:Agent): 
     #    (X_test, y_test) = transform_dataset(agent.test)
@@ -139,13 +117,14 @@ if __name__ == "__main__":
     agentCollection.addAgent(Agent(chess.BLACK, chess.PAWN, chess.H7)) #Pawn 8
         
     
+    #Load all data samples, prepocess and assign them to the agents
     sampleConv = SampleConverter(agentCollection) 
     print("--> Starting to read dataset <-- ")
     sampleConv.read_dataset(PATH + FILE )    
     print("--> Read and learned from APF " + str(sampleConv.total_games) + " games <-- ")
 
-    
-    experiment = Experiment( episodes=EPISODES_COOP,hidden_size=HIDDEN_SIZE, max_steps=MAX_STEPS)
+    experiment = None
+    #experiment = Experiment( episodes=EPISODES_COOP,hidden_size=HIDDEN_SIZE)
     print("--> Setting up ChessEnvironment <-- ")
     
     for agent in agentCollection.allAgents: 
@@ -167,12 +146,11 @@ if __name__ == "__main__":
     stockfish.set_depth(10)
     stockfish.set_skill_level(5)
     white_agents = agentCollection.getAgentsByColor(True)
-    ####TODO: atm only train white team
+    
     for i in range(0,ROUNDS):
         for agent in white_agents: 
             print(agent.starting_position)
             train_net(agent, EPISODES_CNN)
-        #env.play_coop(i)
         env.play_against_bot(i, stockfish)
         print("Round ", str(i), " completed")
     

@@ -2,6 +2,8 @@ import itertools
 from Experiment import Experiment
 
 class ExperimentConfigurator: 
+    """This class creates all permutation of specified experiments.
+    """
     def __init__(self): 
         self.episodes = [10]
         self.hidden_size = [32]

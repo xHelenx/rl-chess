@@ -25,14 +25,14 @@ def plot_APF(agents:list):
     '''
 
     fig = plt.figure()
-    fig.set_size_inches(12,12)
+    fig.set_size_inches(6,6)
     ax = fig.add_subplot(projection='3d')
 
     x = []
     y = []
     
     for agent in agents: 
-        print(agent.trainAPF[0])
+        #print(agent.trainAPF[0])
         for [_,(start,dest),_] in agent.trainAPF: 
             (start,dest) = absolute_to_relative_movement(start,dest)
             x += [start]
@@ -40,7 +40,7 @@ def plot_APF(agents:list):
            
     
     hist, xedges, yedges = np.histogram2d(x, y, bins=15, range=[[-7, 7], [-7, 7]])
-    print(hist)
+    #print(hist)
     # Construct arrays for the anchor positions 
     xpos, ypos = np.meshgrid(xedges[:-1], yedges[:-1], indexing="ij")
     xpos = xpos.ravel()
@@ -114,34 +114,29 @@ def transform_dataset(agent:Agent, dataset:list):
                 
     return (np.array(X),np.array(y), states, actions)
 
-    
-def plot_metrics(history):
+def plot_metrics(history, rounds, interval=1 ):
     # Plot training & validation loss values
     fig = plt.figure(figsize=(12,4))  # Adjust the figure size as needed
     plt.subplot(1, 2, 1)  # Create the first subplot
 
+
     plt.plot(history['loss'])
     plt.plot(history['val_loss'])
     plt.title('Model Loss')
-    plt.xlabel('Epoch')
+    plt.xlabel('Training step (total: rounds*epochs)')
     plt.ylabel('Loss')
     plt.legend(['Train', 'Validation'], loc='upper right')
-    #for step in range(0,EPISODES_CNN*ROUNDS, BATCH_SIZE):  # Starting from 5, up to 20, with a step of 5
-    ##    plt.axvline(x=step, color='gray', linestyle='--', alpha=0.5)
-
-
+    plt.xticks(range(1,rounds+1,interval))
     # Plot training & validation accuracy values
     plt.subplot(1, 2, 2)  # Create the second subplot
     plt.plot(history['accuracy'])
     plt.plot(history['val_accuracy'])
     plt.title('Model Accuracy')
-    plt.xlabel('Epoch')
+    plt.xlabel('Training step (total: rounds*epochs)')
     plt.ylabel('Accuracy')
     plt.legend(['Train', 'Validation'], loc='lower right')
+    plt.xticks(range(1,rounds+1,interval))
     
-    #for step in range(0,EPISODES_CNN*ROUNDS, BATCH_SIZE):  # Starting from 5, up to 20, with a step of 5
-    ##    plt.axvline(x=step, color='gray', linestyle='--', alpha=0.5)
-
     plt.show()
     
 def plot_histograms(agent:Agent): 
@@ -238,9 +233,20 @@ def plot_errors(agentCollection:AgentCollection):
     # Show the plot or save it to a file
     plt.show()
     
-def plot_errors_individually(agents: list[Agent]): 
+    
+def plot_errors_individually(agents: list[Agent], legend, rounds,interval=1): 
+    """Plots the error rates in percent per agent in agents. 
+
+    Args:
+        agents (list[Agent]): agents to be plotted
+        legend (_type_): name of agents
+        rounds (_type_): amount of training rounds
+        interval (int, optional): interval on x-axis . Defaults to 1.
+    """
+    
     plot_x = []
     plot_y = []
+    #colors = ["green", "red", "blue"]
     for agent in agents:    
         x = []
         y = []
@@ -250,22 +256,34 @@ def plot_errors_individually(agents: list[Agent]):
                 y += [agent.invalidSuggestions[i] / (agent.invalidSuggestions[i] + agent.validSuggestions[i])]
             else: 
                 y += [None] #we dont take value, because the agent didnt take a decision in this game 
-            x_filtered = [x_val for x_val, y_val in zip(x, y) if y_val is not None]
-            y_filtered = [y_val for y_val in y if y_val is not None]    
-            plot_x += [x_filtered]
-            plot_y += [y_filtered]
+        #print(x)
+        #print(y)
+        x_filtered = [x_val for x_val, y_val in zip(x, y) if y_val is not None]
+        y_filtered = [y_val for y_val in y if y_val is not None]    
+        plot_x += [x_filtered]
+        plot_y += [y_filtered]
+    
     for x,y in zip(plot_x, plot_y):
-        plt.plot(x,y)
+        plt.plot(x,y)       
         
     # Customize the plot (labels, title, legend, etc. as needed)
     plt.xlabel('Training Rounds')
     plt.ylabel('Error Percentage')
-    #plt.legend(agent_names)  # Add legend labels for each agent
-    plt.xticks(range(1,len(agent.validSuggestions)+1, 1))
+    plt.legend(legend)  # Add legend labels for each agent
+    plt.xticks(range(1,rounds+1,interval))
+    plt.yticks([0,0.2,0.4,0.6,0.8,1])
     # Show the plot or save it to a file
     plt.show()
+    
+def plot_errors_grouped(agents: list[Agent],legend, rounds,interval): 
+    """Returns the accumulated error rate over all agents in "agents" when suggestion valid moves 
 
-def plot_errors_grouped(agents: list[Agent]): 
+    Args:
+        agents (list[Agent]): agents to be plotted
+        legend (_type_): name of agents
+        rounds (_type_): amount of training rounds
+        interval (int, optional): interval on x-axis . Defaults to 1.
+    """    
     x = []
     y = []
     for i in range(len(agents[0].validSuggestions)): 
@@ -279,14 +297,19 @@ def plot_errors_grouped(agents: list[Agent]):
             x += [i+1]
             y += [summed_invalid/(summed_valid+summed_invalid)]
 
+    fig, ax = plt.subplots() 
     plt.plot(x,y)
+    ax.axhline(y=0.5, color='gray', linestyle='--', linewidth=2, label='0.5 ErrorRate')
+    plt.plot
     # Customize the plot (labels, title, legend, etc. as needed)
     plt.xlabel('Training Rounds')
     plt.ylabel('Error Percentage')
-    #plt.xticks(range(1,len(y)+1, 1))
+    plt.legend(legend)  # Add legend labels for each agent
+    plt.xticks(range(1,rounds+1,interval))
+    plt.yticks([0,0.2,0.4,0.6,0.8,1])
     # Show the plot or save it to a file
     plt.show()
-
+    
     
 def plot_errors_scatter(agents: list[Agent]): 
     x = []
