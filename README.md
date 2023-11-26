@@ -1,60 +1,38 @@
 # Deep Reinforcement Learning for Multi-Agent Systems on the Example of Chess 
+---
+Author: Helen Haase
 
-## Content of first project (Grundprojekt)
-The goal of the first project is threefold
+Supervisor: Prof. Dr. Thomas Clemen
 
- - Research current challenges of multi-agent reinforcement learning (MARL) scenario and come up with a concept for an experiment setup 
- - Implement the designed experiment setup using a simple reinforcement algorithm as proof of concept 
- - Generate a frequency distribution of the performed actions for each individual agent (individual actions spaces) from past games of the LichessAPI. Visualize the results.  
+---
+## Project Overview 
+Cooperative multi-agent learning represents a formidable challenge within the realm of artificial intelligence research. This challenge becomes particularly evident in scenarios with high-dimensional environments where agents possess diverse capabilities and must adhere to specific rules while collaboratively learning from experts. Imitation learning emerges as a promising solution, allowing agents to acquire policies through the study of expert demonstrations in the absence of direct reward signals. 
 
-### 1. Current Challenges in the Context of MARL
-Most of the challenges that exist in reinforcement learning (RL) also appear in MARL. The following table, taken from [1], gives a short overview over these challenges and recent approches.
+This project aims to train a heterogenous group of agents to learn the individual action spaces as well as a starting behavior to cooperatively learn to together. The example of chess is chosen, as the action spaces varies and even agents with the same action space may behave differently depending on their position in the game and therefore the primary goal. The chess game is modelled using markov games. 
 
-![DRL for MAS](readme_figs/challenges_1.png)
-![DRL for MAS](readme_figs/challenges_2.png)
-(source: [1])
-
-For example non-stationarity appears, as soon as multiple learners share an environment. Each is perform their own action, thus all other actions besides their own is considered a dynamic effect leading to non-stationarity of the environment. 
-
-Communications models can be used to exchange information about chosen actions or local information about the shared environment. To do so, the agents need a common language and a protocol for the communication. 
-
-Furthermore in for example a cooperative setup the agent have to coordinate themselves, by for example splitting the workload or exploring different areas. This also falls back on communication to exchange newly gained knowledge. 
-
-Another factor, that also is a widely spread challenge in RL with a single action, is the credit assignment problem, as it is often impossible to assess which action let to success. This is even more complicated in multi agent setup, as not only the individual actions but also each agent takes part into the global solution. 
-
-Furthermore scalability is a challenge when state or action space become very large or continuous. Often this is also an issue in setups with multiple agents, even though it is possible to split action spaces and state spaces into individual agents, that might reduce the overall complexity.
-
-Other problems also include the challenge of sparse rewards, the exploration-exploitation dilemma [2], low sample efficiency [3], reward function design [4] and as in most machine learning setting hyperparameter tuning. 
-
-## 2. The Experiment Setup
-<span style="color:red">! TODO ! </span>. 
-
-Experiments are set to take place in a chess environment. This choice has been made for the following reasons: 
-- Agents: 
-  - the number of agents is clearly limited to the number of pieces per team
-  - agents have different action spaces (per type) and also different frequency distributions depending on their positions, which is an interesting setting 
-  - the action space is discrete and small per agent. The maximum of actions for one piece is XX 
-- Environment 
-  - games are episodic. They have a defined end under certain termination criteria
-    - XX 
-  
-  
-
-It is an interesting challenge to combine a local and a global component of the experiment setup. On the one hand all agents have to make a local choice, of which action they would perform. On the other hand a global agent has to choose which of these actions is the best and will thus be performed.
-
+The following poster gives a short overview of the different steps. It is to say that before the group-decision making is being modelled, the individual agents have to be trained, which is the focus in this project. The idea relates to real world problems, where for example multiple robots cooperatively manufacture a product. Instead of teaching each robot very specific which actions it can perform and in which sequence the tasks should be executed by the different agents, it would simplify the process, if agents learned their capabilities themselves and also collaboratively decide which tasks is performed when and by whom. 
 
 ![DRL for MAS](readme_figs/Helen_Haase_FW2_Poster.png)
 
-## Using the experimentation setup 
-<span style="color:red">! TODO ! </span>. 
+## Usage of the repository
+To support the usage of the repository, an example notebook *example_notebook.ipynb*  is prepared and can be located in the src/ folder. Below the folder structure is shown. A few example datasets are added for testing. 
 
-## Visualization of the frequency distribution 
-<span style="color:red">! TODO ! </span>. 
-
-----------------
-
-## References
-- [1]: Gronauer, S., & Diepold, K. (2022). Multi-agent deep reinforcement learning: a survey. Artificial Intelligence Review, 1-49.
-- [2] Nguyen, T. T., Nguyen, N. D., & Nahavandi, S. (2020). Deep reinforcement learning for multiagent systems: A review of challenges, solutions, and applications. IEEE transactions on cybernetics, 50(9), 3826-3839.
-- [3] Ye, Z., Chen, Y., Jiang, X., Song, G., Yang, B., & Fan, S. (2022). Improving sample efficiency in multi-agent actor-critic methods. Applied Intelligence, 1-14.
-- [4] Qian, J., Weng, P., & Tan, C. (2023). Learning Rewards to Optimize Global Performance Metrics in Deep Reinforcement Learning. arXiv preprint arXiv:2303.09027.
+    
+    📦project
+    ┣ 📂dataset
+    ┃ ┣ 📜03_sorted_100.txt
+    ┃ ┣ 📜03_sorted_1000.txt
+    ┃ ┣ 📜03_sorted_5000.txt
+    ┃ ┣ 📜03_sorted_10000.txt
+    ┗ 📂src
+    ┃ ┣ 📜example_notebook.ipynb
+    ┃ ┣ 📜main.py
+    ┃ ┣ 📜constants.py
+    ┃ ┣ 📜DQN.py
+    ┃ ┣ 📜plotting.py
+    ┃ ┣ 📜ObservationSpaceModeller.py
+    ┃ ┣ 📜... 
+    📦poster
+    ┣ 📜Helen_Haase_FW2_Poster.pdf
+    ┗ 📜...
+  
