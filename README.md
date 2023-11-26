@@ -15,7 +15,7 @@ The following poster gives a short overview of the different steps. It is to say
 ![DRL for MAS](readme_figs/Helen_Haase_FW2_Poster.png)
 
 ## Usage of the repository
-To support the usage of the repository, an example notebook *example_notebook.ipynb*  is prepared and can be located in the src/ folder. Below the folder structure is shown. A few example datasets are added for testing. 
+To support the usage of the repository, an example notebook *example_notebook.ipynb*  is prepared and can be located in the src/ folder. Below the folder structure is shown. A few example datasets are added for testing. The best way to get started is to look into the  *example_notebook.ipynb* and read along. Afterwards it should be easier to change experiment setups and add new extensions.
 
     
     📦project
