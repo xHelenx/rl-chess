@@ -1,0 +1,10 @@
+
+###Requirements for python (3.19.13) project
+
+chess==1.10.0
+CHESS_python==2.0.0
+matplotlib==3.8.0
+numpy==1.26.2
+stockfish==3.28.0
+tensorflow==2.14.0
+tensorflow_intel==2.14.0
